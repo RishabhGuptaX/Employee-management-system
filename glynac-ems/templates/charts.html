@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>EMS Charts</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; }
+      .grid { display: grid; gap: 2rem; grid-template-columns: 1fr; }
+      canvas { max-width: 800px; }
+    </style>
+  </head>
+  <body>
+    <h1>Employee Analytics</h1>
+    <div class="grid">
+      <section>
+        <h2>Employees per Department</h2>
+        <canvas id="deptPie"></canvas>
+      </section>
+      <section>
+        <h2>Monthly Attendance Overview</h2>
+        <canvas id="attBar"></canvas>
+      </section>
+    </div>
+    <script>
+      async function fetchJSON(url){ const r = await fetch(url); return r.json(); }
+      (async () => {
+        const dept = await fetchJSON('/api/reports/employees-per-department/');
+        const labels1 = dept.map(d => d.name);
+        const data1 = dept.map(d => d.count);
+        new Chart(document.getElementById('deptPie'), {
+          type: 'pie',
+          data: { labels: labels1, datasets: [{ data: data1 }] }
+        });
+        const att = await fetchJSON('/api/reports/monthly-attendance/');
+        const months = [...new Set(att.map(r => r.month))].sort();
+        const statuses = ['Present','Absent','Late'];
+        const byStatus = statuses.map(s => months.map(m => {
+          const row = att.find(r => r.month === m && r.status === s);
+          return row ? row.count : 0;
+        }));
+        new Chart(document.getElementById('attBar'), {
+          type: 'bar',
+          data: {
+            labels: months.map(m => new Date(m).toLocaleString(undefined,{month:'short',year:'numeric'})),
+            datasets: statuses.map((s,i)=>({label:s,data:byStatus[i]}))
+          },
+          options: { responsive:true, scales:{ x:{ stacked:true }, y:{ stacked:true } } }
+        });
+      })();
+    </script>
+  </body>
+</html>
